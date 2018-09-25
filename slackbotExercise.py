@@ -39,7 +39,8 @@ class Bot:
             with open('user_cache.save','rb') as f:
                 self.user_cache = pickle.load(f)
                 print "Loading " + str(len(self.user_cache)) + " users from cache."
-                return self.user_cache
+                # return self.user_cache
+                print self.user_cache
 
         return {}
 
@@ -65,6 +66,10 @@ class Bot:
             self.office_hours_on = settings["officeHours"]["on"]
             self.office_hours_begin = settings["officeHours"]["begin"]
             self.office_hours_end = settings["officeHours"]["end"]
+
+            # Added [JESSICA]
+            self.num_mins_between_lotteries = settings["callouts"]["lotterySpacing"]
+            self.team_name = settings["callouts"]["teamName"]
 
             self.debug = settings["debug"]
 
@@ -127,6 +132,8 @@ def fetchActiveUsers(bot):
 
     active_users = []
 
+    ## Selects only from active users [JESSICA]
+
     for user_id in user_ids:
         # Add user to the cache if not already
         if user_id not in bot.user_cache:
@@ -143,6 +150,23 @@ def fetchActiveUsers(bot):
 
     return active_users
 
+    # Rewritten to select from all users, not just active [JESSICA]
+
+    # for user_id in user_ids:
+    #     # Add user to the cache if not already
+    #     if user_id not in bot.user_cache:
+    #         bot.user_cache[user_id] = User(user_id)
+    #         if not bot.first_run:
+    #             # Push our new users near the front of the queue!
+    #             bot.user_queue.insert(2,bot.user_cache[user_id])
+    #
+    #     active_users.append(bot.user_cache[user_id])
+    #
+    # if bot.first_run:
+    #     bot.first_run = False
+    #
+    # return active_users
+
 '''
 Selects an exercise and start time, and sleeps until the time
 period has past.
@@ -153,7 +177,7 @@ def selectExerciseAndStartTime(bot):
     exercise = selectExercise(bot)
 
     # Announcement String of next lottery time
-    lottery_announcement = "NEXT LOTTERY FOR " + exercise["name"].upper() + " IS IN " + str(minute_interval) + (" MINUTES" if minute_interval != 1 else " MINUTE")
+    lottery_announcement =  bot.team_name + " - The next lottery for " + exercise["name"] + " is in " + str(minute_interval) + (" minutes" if minute_interval != 1 else " minute")
 
     # Announce the exercise to the thread
     if not bot.debug:
@@ -255,8 +279,8 @@ def saveUsers(bot):
 
     s += "```"
 
-    if not bot.debug:
-        requests.post(bot.post_URL, data=s)
+    # if not bot.debug:
+        # requests.post(bot.post_URL, data=s)
     print s
 
 
@@ -294,6 +318,9 @@ def main():
 
                 # Assign the exercise to someone
                 assignExercise(bot, exercise)
+
+                # Sleep until next lottery [JESSICA]
+                time.sleep(bot.num_mins_between_lotteries * 60)
 
             else:
                 # Sleep the script and check again for office hours
